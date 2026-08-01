@@ -364,7 +364,3 @@ Every chunk stores a SHA-256 hash of its content. During ingestion:
 - [RESULTS.md](RESULTS.md) — Evaluation results and performance metrics
 
 ---
-
-# License
-
-This project was developed as part of a local Retrieval-Augmented Generation (RAG) assignment for educational purposes.
