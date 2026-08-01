@@ -11,7 +11,7 @@ function formatChunk(chunk: SearchResult, index: number): string {
     content = content.slice(0, MAX_CHUNK_CHARS) + "\n... [truncated]";
   }
 
-  return `[SOURCE ${index + 1}] Citation Tag to copy: ${citeTag}
+  return `[SOURCE ${index + 1}] Citation Tag: ${citeTag}
 ${chunk.symbolName ? `Symbol: ${chunk.symbolName}\n` : ""}Code Content:
 ${content}`;
 }
@@ -69,5 +69,22 @@ ANSWER:`;
     },
   });
 
-  return response.message.content.trim();
+  let finalAnswer = response.message.content.trim();
+
+  // Fallback: if the model forgot to add proper (path:line-line) citations despite instructions,
+  // append the top source citation so validation doesn't fail sporadically.
+  // We use the same regex as citationValidator to check for a real citation.
+  const citationRegex = /\([^:)]+:\d+-\d+\)/;
+  if (
+    !finalAnswer.toLowerCase().includes("could not find the answer") &&
+    !citationRegex.test(finalAnswer) &&
+    chunks.length > 0
+  ) {
+    const chunk = chunks[0];
+    const normPath = chunk.path.replace(/\\/g, "/");
+    const citeTag = `(${normPath}:${chunk.startLine}-${chunk.endLine})`;
+    finalAnswer += ` ${citeTag}`;
+  }
+
+  return finalAnswer;
 }

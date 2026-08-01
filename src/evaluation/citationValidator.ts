@@ -19,7 +19,7 @@ export function validateCitations(
     };
   }
 
-  const regex = /\(([^:]+):(\d+)-(\d+)\)/g;
+  const regex = /\(([^:)]+):(\d+)-(\d+)\)/g;
 
   const citations = [...answer.matchAll(regex)];
 
