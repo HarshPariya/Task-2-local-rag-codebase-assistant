@@ -11,7 +11,7 @@ export async function ask(question: string) {
   const keyword = await ftsSearch(question, 20);
 
   // Hybrid Retrieval with RRF + Metadata Boosting
-  const retrieved = reciprocalRankFusion(vector, keyword, question).slice(0, 7);
+  const retrieved = reciprocalRankFusion(vector, keyword, question).slice(0, 5);
 
   console.log("\nRetrieving context...");
   console.log(

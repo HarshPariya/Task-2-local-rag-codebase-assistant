@@ -4,6 +4,9 @@ import path from "node:path";
 import { vectorSearch } from "../retriever/vector.js";
 import { ftsSearch } from "../retriever/fts.js";
 import { reciprocalRankFusion } from "../retriever/rrf.js";
+import { generateAnswer } from "../generation/generate.js";
+import { validateCitations } from "../evaluation/citationValidator.js";
+import { judgeFaithfulness } from "../evaluation/faithfulness.js";
 
 interface GoldenQuestion {
   id: string;
@@ -21,7 +24,6 @@ function percentile(values: number[], p: number): number {
   if (values.length === 0) return 0;
 
   const sorted = [...values].sort((a, b) => a - b);
-
   const index = Math.ceil((p / 100) * sorted.length) - 1;
 
   return sorted[Math.max(0, index)];
@@ -45,21 +47,21 @@ export async function runEvaluation() {
   let recall5 = 0;
   let recall10 = 0;
   let reciprocalRankSum = 0;
+  let citationPass = 0;
+  let faithfulnessPass = 0;
 
   const queryLatencies: number[] = [];
+  const generationLatencies: number[] = [];
 
   for (const q of questions) {
     const start = performance.now();
 
-    // Retrieve with a larger pool for better coverage before RRF
     const vector = await vectorSearch(q.question, 20);
     const fts = await ftsSearch(q.question, 20);
+    const results = reciprocalRankFusion(vector, fts, q.question);
 
-    const results = reciprocalRankFusion(vector, fts);
-
-    const elapsed = performance.now() - start;
-
-    queryLatencies.push(elapsed);
+    const retrievalMs = performance.now() - start;
+    queryLatencies.push(retrievalMs);
 
     const top5 = results.slice(0, 5);
     const top10 = results.slice(0, 10);
@@ -108,31 +110,52 @@ export async function runEvaluation() {
       reciprocalRankSum += 1 / rank;
     }
 
+    const retrieved = results.slice(0, 5);
+    const genStart = performance.now();
+    const answer = await generateAnswer(q.question, retrieved);
+    const citationResult = validateCitations(answer, retrieved);
+    const faithfulness = await judgeFaithfulness(q.question, answer, retrieved);
+    generationLatencies.push(performance.now() - genStart);
+
+    if (citationResult.valid) citationPass++;
+    if (faithfulness === "YES") faithfulnessPass++;
+
+    const citeMark = citationResult.valid ? "C" : "c";
+    const faithMark = faithfulness === "YES" ? "F" : "f";
+
     console.log(
-      `${q.id.padEnd(10)} ${hit5 ? "✓" : "✗"} (${elapsed.toFixed(0)} ms)`
+      `${q.id.padEnd(10)} ${hit5 ? "✓" : "✗"} ${citeMark}${faithMark} (${retrievalMs.toFixed(0)} ms)`
     );
   }
 
   const recallAt5 = (recall5 / questions.length) * 100;
   const recallAt10 = (recall10 / questions.length) * 100;
   const mrr = reciprocalRankSum / questions.length;
+  const citationRate = (citationPass / questions.length) * 100;
+  const faithfulnessRate = (faithfulnessPass / questions.length) * 100;
 
-  const p50 = percentile(queryLatencies, 50);
-  const p95 = percentile(queryLatencies, 95);
+  const queryP50 = percentile(queryLatencies, 50);
+  const queryP95 = percentile(queryLatencies, 95);
+  const genP50 = percentile(generationLatencies, 50);
+  const genP95 = percentile(generationLatencies, 95);
 
   console.log("");
   console.log("=========================");
   console.log("");
 
-  console.log(`Recall@5 : ${recallAt5.toFixed(1)}%`);
-  console.log(`Recall@10: ${recallAt10.toFixed(1)}%`);
-  console.log(`MRR       : ${mrr.toFixed(3)}`);
+  console.log(`Recall@5       : ${recallAt5.toFixed(1)}%`);
+  console.log(`Recall@10      : ${recallAt10.toFixed(1)}%`);
+  console.log(`MRR            : ${mrr.toFixed(3)}`);
+  console.log(`Citation valid : ${citationRate.toFixed(1)}%`);
+  console.log(`Faithfulness   : ${faithfulnessRate.toFixed(1)}%`);
 
   console.log("");
   console.log("Latency");
   console.log("========");
   console.log("");
 
-  console.log(`Query p50 : ${p50.toFixed(1)} ms`);
-  console.log(`Query p95 : ${p95.toFixed(1)} ms`);
+  console.log(`Retrieval p50 : ${queryP50.toFixed(1)} ms`);
+  console.log(`Retrieval p95 : ${queryP95.toFixed(1)} ms`);
+  console.log(`Generation p50: ${genP50.toFixed(1)} ms`);
+  console.log(`Generation p95: ${genP95.toFixed(1)} ms`);
 }

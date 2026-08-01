@@ -19,7 +19,8 @@ export function validateCitations(
     };
   }
 
-  const regex = /\(([^:)]+):(\d+)-(\d+)\)/g;
+  const regex =
+    /\((.+?\.(?:tsx?|jsx?|ts|js|md|json|yaml|yml)):(\d+)-(\d+)\)/g;
 
   const citations = [...answer.matchAll(regex)];
 
@@ -40,8 +41,8 @@ export function validateCitations(
     const start = Number(citation[2]);
     const end = Number(citation[3]);
 
-    const normalize = (p: string) => p.replace(/\\/g, "/");
-    
+    const normalize = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+
     const ok = chunks.some(
       (chunk) =>
         normalize(chunk.path) === normalize(path) &&

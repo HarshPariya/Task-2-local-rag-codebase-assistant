@@ -9,6 +9,7 @@ dist/
 build/
 
 *.log
+batch-results*.txt
 .DS_Store
 
 # SQLite temp files

@@ -37,6 +37,8 @@ Distribution:
 | Recall@5 | **100.0%** |
 | Recall@10 | **100.0%** |
 | MRR | **0.778** |
+| Citation Validity | **100.0%** |
+| Faithfulness | **100.0%** |
 
 ---
 
