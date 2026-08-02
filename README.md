@@ -363,4 +363,8 @@ Every chunk stores a SHA-256 hash of its content. During ingestion:
 - [NOTES.md](NOTES.md) — Assumptions, limitations, and future work
 - [RESULTS.md](RESULTS.md) — Evaluation results and performance metrics
 
+<<<<<<< HEAD
 ---
+=======
+---
+>>>>>>> origin/main
