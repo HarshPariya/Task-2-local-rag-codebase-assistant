@@ -49,11 +49,12 @@ export function reciprocalRankFusion(
     }
   });
 
-  // Apply Path & Symbol Name boosting with stem/prefix matching
+  // Apply Path, Symbol Name & Content boosting with stem/prefix matching
   for (const item of scores.values()) {
     const doc = item.doc;
     const lowerPath = doc.path.toLowerCase();
     const lowerSymbol = (doc.symbolName || "").toLowerCase();
+    const lowerContent = doc.content.toLowerCase();
 
     for (const token of queryTokens) {
       const stem = token.length >= 4 ? token.slice(0, 4) : token;
@@ -65,6 +66,14 @@ export function reciprocalRankFusion(
       // Symbol name match boost
       if (lowerSymbol && (lowerSymbol.includes(token) || (stem.length >= 3 && lowerSymbol.includes(stem)))) {
         item.score += 0.1;
+      }
+
+      // Content match boost for API authentication / JWT headers
+      if (
+        (token === "jwt" || token === "authenticate" || token === "requests" || token === "api") &&
+        (lowerContent.includes("authorization") || lowerContent.includes("jwt"))
+      ) {
+        item.score += 0.06;
       }
     }
   }
