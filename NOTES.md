@@ -8,9 +8,8 @@ The implementation makes the following assumptions:
 
 - The indexed repository primarily contains TypeScript, TSX, and Markdown files.
 - Source files are syntactically valid and can be parsed by ts-morph.
-- Ollama is installed locally with the required models:
-  - qwen2.5:3b
-  - nomic-embed-text
+- A Groq API key is configured in `.env` file
+- Local embeddings via transformers.js (Xenova/all-MiniLM-L6-v2)
 - SQLite and sqlite-vec are available in the execution environment.
 - The repository is relatively static during ingestion.
 
@@ -53,9 +52,9 @@ Adding metadata filtering could improve retrieval precision.
 
 ## Local Model Performance
 
-Generation quality depends on the local Ollama models.
+Embeddings are computed locally with transformers.js (no GPU required).
 
-Using larger models may improve answer quality but increases latency and hardware requirements.
+Generation quality depends on the Groq API model performance.
 
 ---
 
@@ -108,7 +107,7 @@ Cosine similarity (used in vector search) lives in roughly the [0,1] range and o
 Attempting to average them requires a normalisation constant that inevitably becomes wrong the moment the corpus changes or grows. RRF discards score magnitudes entirely and uses only rank position (e.g., `1 / (k + rank)`), making it scale-free and inherently robust across different corpora.
 
 ## Context Compression for Small Models
-Because 3B parameter models (like `qwen2.5:3b`) can easily get overwhelmed by long context blocks containing large amounts of whitespace, the generation step includes a `compressWhitespace` utility. This utility strips out redundant blank lines (converting 3+ consecutive newlines into 2), significantly reducing the character count of large code chunks (like `AuthProvider`) without losing any syntax or semantic meaning. Additionally, the prompt uses clear, explicit instructions to help the model reliably extract answers from dense code context.
+The generation step includes a `compressWhitespace` utility that strips out redundant blank lines (converting 3+ consecutive newlines into 2), significantly reducing the character count of large code chunks (like `AuthProvider`) without losing any syntax or semantic meaning. Additionally, the prompt uses clear, explicit instructions to help the model reliably extract answers from dense code context.
 
 ## Strict Citation Enforcing & Out-of-Context Handling
 To prevent the model from malforming citations (e.g. omitting parentheses which breaks the regex validator), the generation prompt has strict instructions requiring the exact `(path:start-end)` format after factual claims. Additionally, for out-of-context queries (where the answer doesn't exist in the project, such as "Does this project support Google OAuth?"), the model is now instructed to respond with a natural, user-friendly phrase (`The provided context does not contain information to answer this question.`) rather than an error-like fallback string. The evaluation metrics gracefully catch this phrase to correctly pass tests for unsupported functionality.

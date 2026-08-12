@@ -1,17 +1,17 @@
 # Local RAG System for Codebase Question Answering
 
-A fully local Retrieval-Augmented Generation (RAG) system that indexes a software codebase and answers developer questions using hybrid retrieval, citation-aware generation, and automatic evaluation.
+A Retrieval-Augmented Generation (RAG) system that indexes a software codebase and answers developer questions using hybrid retrieval, citation-aware generation, and automatic evaluation.
 
 ---
 
 ## Features
 
 - TypeScript & Markdown AST-aware code chunking
-- Local vector embeddings using Ollama (`nomic-embed-text`)
+- Local vector embeddings using transformers.js (`Xenova/all-MiniLM-L6-v2`)
 - SQLite + sqlite-vec vector database
 - SQLite FTS5 keyword search (BM25) with AND-first/OR-fallback strategy
 - Hybrid Retrieval using Reciprocal Rank Fusion (RRF) with top-20 candidate pool
-- Local answer generation using Qwen2.5 3B via Ollama
+- Answer generation using Groq API (`llama-3.3-70b-versatile`)
 - Source citation generation with dynamic context-aware prompt
 - Citation validation (fuzzy "no answer" detection)
 - Faithfulness evaluation via LLM judge
@@ -50,7 +50,7 @@ Vector Search           Keyword Search
            Top-5 Chunks
                   │
                   ▼
-        Qwen2.5 3B via Ollama
+      Groq (llama-3.3-70b-versatile)
                   │
                   ▼
      Answer + Source Citations
@@ -82,10 +82,10 @@ Citation Validation    Faithfulness Check
 
 - ts-morph (AST-level TypeScript/TSX chunking)
 
-## Local Models
+## Models
 
-- `qwen2.5:3b` — answer generation & faithfulness judge
-- `nomic-embed-text` — vector embeddings
+- `Xenova/all-MiniLM-L6-v2` — local vector embeddings (transformers.js)
+- `llama-3.3-70b-versatile` — answer generation & faithfulness judge (via Groq API)
 
 ## Retrieval
 
@@ -110,9 +110,9 @@ Task-2-Rag-project/
 │   ├── chunker/                 # TypeScript & Markdown chunking (ts-morph)
 │   ├── commands/                # CLI commands (ingest, embed, ask, eval)
 │   ├── database/                # SQLite, sqlite-vec, FTS5 operations
-│   ├── embedding/               # Ollama embedding generation
+│   ├── embedding/               # Local embedding generation (transformers.js)
 │   ├── evaluation/              # Citation validation & faithfulness checks
-│   ├── generation/              # LLM answer generation
+│   ├── generation/              # LLM answer generation (Groq)
 │   ├── retriever/               # Vector search, BM25, RRF
 │   ├── types/                   # Shared TypeScript types
 │   ├── utils/                   # Utility functions
@@ -133,12 +133,21 @@ Task-2-Rag-project/
 
 ## Prerequisites
 
-Make sure Ollama is running with the required models:
+1. Install dependencies:
 
 ```bash
-ollama pull nomic-embed-text
-ollama pull qwen2.5:3b
+npm install
 ```
+
+2. Create a `.env` file with your Groq API key:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and set your `GROQ_API_KEY`. Get one at https://console.groq.com/keys
+
+---
 
 ## 1. Ingest Repository
 
@@ -280,14 +289,14 @@ Query p95 : 87.3 ms
 2. Generate AST-aware code chunks (functions, classes, types, interfaces)
 3. Compute SHA-256 hash per chunk for deduplication
 4. Store new/modified chunks in SQLite
-5. Generate `nomic-embed-text` embeddings via Ollama
+5. Generate `Xenova/all-MiniLM-L6-v2` embeddings (local, transformers.js)
 6. Store vectors in sqlite-vec
-7. At query time: embed the question with `search_query:` prefix
+7. At query time: embed the question locally
 8. Run vector search (top-20 candidates)
 9. Run FTS5 BM25 search (top-20, AND-first then OR fallback)
 10. Fuse both result sets using Reciprocal Rank Fusion (k=60)
 11. Take top-5 chunks as context
-12. Generate answer using Qwen2.5 3B
+12. Generate answer using Groq (`llama-3.3-70b-versatile`)
 13. Validate citations against retrieved chunks
 14. Evaluate faithfulness with LLM judge
 
@@ -341,7 +350,7 @@ The citation validator checks that every `(path:start-end)` citation in the gene
 - references a file that was in the retrieved context
 - has a valid line range within that chunk
 
-**Robust Fallback Mechanism**: Small local models (like 3B parameter models) occasionally fail to follow complex formatting instructions when generating lists or struggle to remember to append the citation strings. To ensure strict validation without sporadic failures:
+**Robust Fallback Mechanism**: Small local models occasionally fail to follow complex formatting instructions when generating lists or struggle to remember to append the citation strings. To ensure strict validation without sporadic failures:
 - If the model provides a valid factual answer based on context but fails to include a citation, a post-processing fallback mechanism automatically appends the top context source's citation tag to the output.
 - This ensures 100% compliance with citation requirements while preserving the LLM's factual response.
 
@@ -362,9 +371,3 @@ Every chunk stores a SHA-256 hash of its content. During ingestion:
 - [DESIGN.md](DESIGN.md) — System architecture and implementation details
 - [NOTES.md](NOTES.md) — Assumptions, limitations, and future work
 - [RESULTS.md](RESULTS.md) — Evaluation results and performance metrics
-
-<<<<<<< HEAD
----
-=======
----
->>>>>>> origin/main

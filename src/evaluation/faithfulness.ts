@@ -1,5 +1,12 @@
-import ollama from "ollama";
+import Groq from "groq-sdk";
 import { SearchResult } from "../database/db.js";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const CITATION_REGEX =
   /\((.+?\.(?:tsx?|jsx?|ts|js|md|json|yaml|yml)):(\d+)-(\d+)\)/g;
@@ -172,20 +179,18 @@ or
 NO
 `;
 
-  const response = await ollama.chat({
-    model: "qwen2.5:3b",
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
     messages: [
       {
         role: "user",
         content: prompt,
       },
     ],
-    options: {
-      temperature: 0,
-    },
+    temperature: 0,
   });
 
-  const result = response.message.content.trim().toUpperCase();
+  const result = response.choices[0]?.message?.content?.trim().toUpperCase() || "NO";
 
   return result.startsWith("YES") ? "YES" : "NO";
 }

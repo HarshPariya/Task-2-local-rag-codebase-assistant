@@ -39,7 +39,7 @@ export function getDatabase() {
     CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embeddings
     USING vec0(
       id TEXT PRIMARY KEY,
-      embedding FLOAT[768]
+      embedding FLOAT[384]
     );
   `);
 

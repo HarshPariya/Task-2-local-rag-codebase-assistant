@@ -97,9 +97,9 @@ Markdown files are split by headings.
 
 ### Embedding
 
-Uses Ollama with:
+Uses transformers.js with:
 
-- nomic-embed-text
+- Xenova/all-MiniLM-L6-v2 (local)
 
 ---
 
@@ -130,7 +130,7 @@ Hybrid Retrieval
 
 Uses
 
-qwen2.5:3b
+llama-3.3-70b-versatile (via Groq API)
 
 Generates answers using retrieved chunks.
 

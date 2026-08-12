@@ -2,12 +2,13 @@
 
 ## Project Overview
 
-This project implements a local Retrieval-Augmented Generation (RAG) system for codebases using:
+This project implements a Retrieval-Augmented Generation (RAG) system for codebases using:
 
 - TypeScript
 - SQLite
 - sqlite-vec
-- Ollama
+- transformers.js (local embeddings)
+- Groq API (LLM inference)
 - Hybrid Retrieval (Vector + BM25)
 - Reciprocal Rank Fusion (RRF)
 
@@ -125,7 +126,7 @@ Top-5 Context
 
 ↓
 
-Generation Model: Qwen2.5 3B (Ollama)
+Generation Model: llama-3.3-70b-versatile (Groq)
 
 ↓
 
@@ -195,7 +196,7 @@ Implemented features include:
 - sqlite-vec embeddings
 - Hybrid retrieval (Vector + BM25)
 - Reciprocal Rank Fusion
-- Local LLM answer generation (qwen2.5:3b via Ollama)
+- LLM answer generation (llama-3.3-70b-versatile via Groq)
 - Citation validation
 - Faithfulness evaluation
 - Incremental ingestion

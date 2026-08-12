@@ -1,10 +1,17 @@
-import ollama from "ollama";
+import Groq from "groq-sdk";
 import { SearchResult } from "../database/db.js";
 import { validateCitations } from "../evaluation/citationValidator.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const MAX_CHUNK_CHARS = 1500;
 const CITATION_REGEX =
   /\((.+?\.(?:tsx?|jsx?|ts|js|md|json|yaml|yml)):(\d+)-(\d+)\)/g;
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 function normalizePath(p: string): string {
   return p.replace(/\\/g, "/").toLowerCase();
@@ -274,16 +281,14 @@ export async function generateAnswer(
 
   let prompt = buildPrompt(question, context, exampleCite);
 
-  const response = await ollama.chat({
-    model: "qwen2.5:3b",
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
     messages: [{ role: "user", content: prompt }],
-    options: {
-      temperature: 0.1,
-      num_predict: 256,
-    },
+    temperature: 0.1,
+    max_tokens: 256,
   });
 
-  let finalAnswer = response.message.content.trim();
+  let finalAnswer = response.choices[0]?.message?.content?.trim() || "";
 
   if (isNoAnswer(finalAnswer)) {
     finalAnswer = buildFallbackAnswer(question, chunks);

@@ -13,7 +13,7 @@ The pipeline consists of four major stages:
 3. Retrieval
 4. Answer Generation
 
-The entire system runs locally using SQLite, sqlite-vec, and Ollama without relying on external vector databases or hosted LLM APIs.
+The system uses SQLite and sqlite-vec locally for storage and vector search, and uses Groq's API for LLM inference with local embeddings via transformers.js.
 
 ---
 
@@ -22,7 +22,7 @@ The entire system runs locally using SQLite, sqlite-vec, and Ollama without rely
 ## Public Interfaces and Types
 The system provides a single CLI interface with the following commands:
 - `npm run dev -- ingest <path>`: Ingests a local directory and stores chunks into SQLite.
-- `npm run dev -- embed`: Computes Ollama embeddings for any newly ingested chunks.
+- `npm run dev -- embed`: Computes embeddings for any newly ingested chunks.
 - `npm run dev -- ask "<question>"`: Retrieves context and generates a cited answer.
 - `npm run dev -- eval`: Runs the golden evaluation set.
 
@@ -41,7 +41,7 @@ interface Chunk {
 ```
 
 ## The Three Most Likely Failure Modes (And Our Plan for Each)
-1. **Ollama Timeout or Connection Refusal**: The local model may take too long or not be running. *Plan*: Implement robust try-catch blocks around fetch calls to the Ollama endpoint and fail loudly with a user-friendly error asking them to verify Ollama is running the correct models.
+1. **Groq API Failure**: The API may be unavailable or rate-limited. *Plan*: Implement robust try-catch blocks around Groq API calls and fail loudly with a user-friendly error asking them to verify their API key and network connection.
 2. **Context Window Overflow**: A query might retrieve several massive functions (e.g. 600+ lines), blowing out the context window. *Plan*: The AST chunker explicitly splits functions larger than 300 lines with a 50-line overlap, ensuring no single chunk dominates or exceeds context limits. A `MIN_CHUNK_SIZE` (400 chars) prevents merging too aggressively.
 3. **Database Locks**: Since both FTS and vector insertion run iteratively, SQLite might hit `SQLITE_BUSY` locks if running concurrently. *Plan*: We use synchronous batch execution (transactional inserts) and do not support concurrent ingestion processes.
 
@@ -95,7 +95,7 @@ interface Chunk {
                Top-5 Chunks
                      │
                      ▼
-              Qwen2.5 3B (Ollama)
+              Groq (llama-3.3-70b-versatile)
                      │
                      ▼
       Answer + Source Citations
@@ -160,13 +160,13 @@ Each section becomes one retrievable document.
 
 # Embedding Pipeline
 
-Embeddings are generated using:
+Embeddings are generated locally using **transformers.js** with the model:
 
 ```
-nomic-embed-text
+Xenova/all-MiniLM-L6-v2
 ```
 
-through Ollama.
+This runs entirely locally in Node.js without any external service.
 
 Two embedding modes are used:
 
@@ -182,7 +182,7 @@ Query embedding
 search_query:
 ```
 
-Embeddings are stored in sqlite-vec.
+Embeddings are stored in sqlite-vec (384 dimensions).
 
 ---
 
@@ -270,10 +270,10 @@ A curated stopword list filters common English words and domain-generic terms (e
 The retrieved Top-5 chunks are formatted into a prompt and sent to:
 
 ```
-Qwen2.5 3B Instruct
+llama-3.3-70b-versatile
 ```
 
-running locally through Ollama.
+via Groq API.
 
 The prompt enforces:
 
@@ -337,9 +337,10 @@ Metrics include:
 | AND-first/OR-fallback FTS | Higher precision with graceful recall fallback |
 | Top-20 RRF pool | More candidates = better fusion quality |
 | Reciprocal Rank Fusion | Combines vector + keyword, scale-free ranking |
-| Ollama | Fully local inference, no cloud API |
-| Qwen2.5 3B | High-quality local instruction model |
-| nomic-embed-text | High-quality local embedding model |
+| transformers.js | Local embeddings, no external service needed |
+| Xenova/all-MiniLM-L6-v2 | High-quality local embedding model (384-dim) |
+| Groq API | Fast inference, no local GPU required |
+| llama-3.3-70b-versatile | High-quality instruction model via API |
 | ts-morph | Accurate TypeScript AST parsing |
 | SHA-256 hashes | Incremental ingestion and embedding cache |
 | Fuzzy "no answer" detection | Handles model output variations (missing period, etc.) |
